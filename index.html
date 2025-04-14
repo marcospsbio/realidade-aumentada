@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>RA Teste - EcoAtive</title>
+    <title>Teste RA - Apenas GPS e Câmera</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-ar@1.8.2/aframe-ar.min.js"></script>
     <style>
@@ -10,31 +10,14 @@
     </style>
   </head>
   <body>
-    <a-scene 
-      embedded 
+    <a-scene
+      embedded
       arjs="sourceType: webcam; gpsMinAccuracy: 100; debugUIEnabled: true;"
       vr-mode-ui="enabled: false">
 
-      <!-- 📍 Ponto real no GPS -->
-      <a-entity 
-        gps-entity-place="latitude: -23.883250658523252; longitude: -47.99870032682318" 
-        look-at="[gps-camera]"
-        position="0 0 0">
-        <a-box color="green" depth="2" height="2" width="2"></a-box>
-        <a-text 
-          value="Ponto EcoAtive"
-          look-at="[gps-camera]"
-          scale="20 20 20"
-          position="0 3 0">
-        </a-text>
-      </a-entity>
-
-      <!-- 🧪 Cubo de debug sempre visível (sem GPS) -->
-      <a-box position="0 1 -5" color="red" depth="1" height="1" width="1"></a-box>
-      <a-text value="DEBUG" position="0 2 -5" scale="5 5 5" color="white"></a-text>
-
-      <!-- Câmera -->
+      <!-- Só a câmera com GPS, sem objetos -->
       <a-camera gps-camera rotation-reader></a-camera>
+
     </a-scene>
   </body>
 </html>
