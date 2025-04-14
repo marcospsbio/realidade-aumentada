@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>RA Teste - EcoAtive</title>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-ar@1.8.2/aframe-ar.min.js"></script>
+    <style>
+      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+    </style>
+  </head>
+  <body>
+    <a-scene 
+      embedded 
+      arjs="sourceType: webcam; gpsMinAccuracy: 100; debugUIEnabled: false;"
+      vr-mode-ui="enabled: false">
+
+      <!-- Ponto fixo -->
+      <a-entity 
+        gps-entity-place="latitude: -23.883250658523252; longitude: -47.99870032682318" 
+        look-at="[gps-camera]"
+        position="0 0 0">
+        <a-box color="green" depth="2" height="2" width="2"></a-box>
+        <a-text 
+          value="Ponto EcoAtive"
+          look-at="[gps-camera]"
+          scale="20 20 20"
+          position="0 3 0">
+        </a-text>
+      </a-entity>
+
+      <!-- Câmera com GPS -->
+      <a-camera gps-camera rotation-reader></a-camera>
+    </a-scene>
+  </body>
+</html>
