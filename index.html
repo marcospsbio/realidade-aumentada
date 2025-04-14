@@ -2,22 +2,24 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Teste RA - Apenas GPS e Câmera</title>
+    <title>Teste RA - GPS e Câmera</title>
+    <!-- A-Frame -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <!-- AR.js com suporte a GPS -->
     <script src="https://unpkg.com/aframe-ar@1.8.2/aframe-ar.min.js"></script>
     <style>
       body { margin: 0; overflow: hidden; }
     </style>
   </head>
   <body>
-    <a-scene
+    <a-scene 
       embedded
-      arjs="sourceType: webcam; gpsMinAccuracy: 100; debugUIEnabled: true;"
-      vr-mode-ui="enabled: false">
-
-      <!-- Só a câmera com GPS, sem objetos -->
+      vr-mode-ui="enabled: false"
+      arjs="debugUIEnabled: true; gpsMinAccuracy: 100;">
+      
+      <!-- Câmera com GPS -->
       <a-camera gps-camera rotation-reader></a-camera>
-
+      
     </a-scene>
   </body>
 </html>
