@@ -2,24 +2,65 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Teste RA - GPS e Câmera</title>
-    <!-- A-Frame -->
+    <title>Teste RA - EcoAtive</title>
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <!-- AR.js com suporte a GPS -->
     <script src="https://unpkg.com/aframe-ar@1.8.2/aframe-ar.min.js"></script>
     <style>
-      body { margin: 0; overflow: hidden; }
+      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+      #coords {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        padding: 10px;
+        font-size: 14px;
+        z-index: 999;
+      }
+      #startCamera {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 10px 20px;
+        font-size: 16px;
+        background: #28a745;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        z-index: 999;
+      }
     </style>
   </head>
   <body>
+
+    <div id="coords">Aguardando GPS...</div>
+    <button id="startCamera">Ativar Câmera</button>
+
     <a-scene 
       embedded
       vr-mode-ui="enabled: false"
-      arjs="debugUIEnabled: true; gpsMinAccuracy: 100;">
+      arjs="gpsMinAccuracy: 100; debugUIEnabled: false;"
+      renderer="logarithmicDepthBuffer: true;"
+      id="scene"
+      style="display: none;">
       
-      <!-- Câmera com GPS -->
       <a-camera gps-camera rotation-reader></a-camera>
-      
     </a-scene>
+
+    <script>
+      // Mostra coordenadas GPS em tempo real
+      document.querySelector('[gps-camera]').addEventListener('gps-camera-update-position', e => {
+        const coords = `Latitude: ${e.detail.position.latitude.toFixed(6)}<br>Longitude: ${e.detail.position.longitude.toFixed(6)}`;
+        document.getElementById('coords').innerHTML = coords;
+      });
+
+      // Ativa a cena (câmera)
+      document.getElementById('startCamera').addEventListener('click', () => {
+        document.getElementById('scene').style.display = 'block';
+        document.getElementById('startCamera').style.display = 'none';
+      });
+    </script>
+
   </body>
 </html>
