@@ -1,66 +1,190 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Teste RA - EcoAtive</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/aframe-ar@1.8.2/aframe-ar.min.js"></script>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS e Câmera</title>
     <style>
-      body { margin: 0; overflow: hidden; font-family: sans-serif; }
-      #coords {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        background: rgba(0,0,0,0.6);
-        color: #fff;
-        padding: 10px;
-        font-size: 14px;
-        z-index: 999;
-      }
-      #startCamera {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 10px 20px;
-        font-size: 16px;
-        background: #28a745;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        z-index: 999;
-      }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 5px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #map {
+            height: 300px;
+            width: 100%;
+            margin-top: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        #coordinates {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            font-family: monospace;
+            display: none;
+        }
+        #video-container {
+            margin-top: 20px;
+            display: none;
+        }
+        video {
+            width: 100%;
+            border-radius: 5px;
+            background-color: #000;
+        }
+        .status {
+            color: #666;
+            font-style: italic;
+            margin-top: 5px;
+        }
     </style>
-  </head>
-  <body>
-
-    <div id="coords">Aguardando GPS...</div>
-    <button id="startCamera">Ativar Câmera</button>
-
-    <a-scene 
-      embedded
-      vr-mode-ui="enabled: false"
-      arjs="gpsMinAccuracy: 100; debugUIEnabled: false;"
-      renderer="logarithmicDepthBuffer: true;"
-      id="scene"
-      style="display: none;">
-      
-      <a-camera gps-camera rotation-reader></a-camera>
-    </a-scene>
+</head>
+<body>
+    <h1>GPS e Câmera</h1>
+    
+    <div class="container">
+        <h2>Localização GPS</h2>
+        <button id="getLocation">Obter Localização</button>
+        <div id="coordinates"></div>
+        <div id="map"></div>
+        <p class="status" id="gps-status"></p>
+    </div>
+    
+    <div class="container">
+        <h2>Câmera</h2>
+        <button id="startCamera">Iniciar Câmera</button>
+        <div id="video-container">
+            <video id="video" autoplay playsinline></video>
+        </div>
+        <p class="status" id="camera-status"></p>
+    </div>
 
     <script>
-      // Mostra coordenadas GPS em tempo real
-      document.querySelector('[gps-camera]').addEventListener('gps-camera-update-position', e => {
-        const coords = `Latitude: ${e.detail.position.latitude.toFixed(6)}<br>Longitude: ${e.detail.position.longitude.toFixed(6)}`;
-        document.getElementById('coords').innerHTML = coords;
-      });
+        // Função para obter localização GPS
+        document.getElementById('getLocation').addEventListener('click', function() {
+            const statusElement = document.getElementById('gps-status');
+            const coordinatesElement = document.getElementById('coordinates');
+            
+            statusElement.textContent = "Obtendo localização...";
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const latitude = position.coords.latitude;
+                        const longitude = position.coords.longitude;
+                        
+                        coordinatesElement.style.display = 'block';
+                        coordinatesElement.innerHTML = `
+                            <strong>Latitude:</strong> ${latitude.toFixed(6)}<br>
+                            <strong>Longitude:</strong> ${longitude.toFixed(6)}
+                        `;
+                        
+                        statusElement.textContent = "Localização obtida com sucesso!";
+                        
+                        // Se quiser adicionar um mapa, você precisaria de uma API como Google Maps ou Leaflet
+                        // Aqui está um exemplo com link para Google Maps
+                        const mapLink = document.createElement('a');
+                        mapLink.href = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                        mapLink.target = '_blank';
+                        mapLink.textContent = 'Ver no Google Maps';
+                        mapLink.style.display = 'block';
+                        mapLink.style.marginTop = '10px';
+                        coordinatesElement.appendChild(mapLink);
+                    },
+                    function(error) {
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                statusElement.textContent = "Acesso à localização negado pelo usuário.";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                statusElement.textContent = "Informação de localização indisponível.";
+                                break;
+                            case error.TIMEOUT:
+                                statusElement.textContent = "Tempo limite para obter localização excedido.";
+                                break;
+                            case error.UNKNOWN_ERROR:
+                                statusElement.textContent = "Ocorreu um erro desconhecido.";
+                                break;
+                        }
+                    }
+                );
+            } else {
+                statusElement.textContent = "Geolocalização não é suportada neste navegador.";
+            }
+        });
 
-      // Ativa a cena (câmera)
-      document.getElementById('startCamera').addEventListener('click', () => {
-        document.getElementById('scene').style.display = 'block';
-        document.getElementById('startCamera').style.display = 'none';
-      });
+        // Função para iniciar a câmera
+        document.getElementById('startCamera').addEventListener('click', function() {
+            const videoElement = document.getElementById('video');
+            const videoContainer = document.getElementById('video-container');
+            const statusElement = document.getElementById('camera-status');
+            const button = document.getElementById('startCamera');
+            
+            if (videoContainer.style.display === 'block') {
+                // Se a câmera já estiver ligada, desligá-la
+                const stream = videoElement.srcObject;
+                if (stream) {
+                    const tracks = stream.getTracks();
+                    tracks.forEach(track => track.stop());
+                    videoElement.srcObject = null;
+                }
+                videoContainer.style.display = 'none';
+                button.textContent = 'Iniciar Câmera';
+                statusElement.textContent = "Câmera desligada.";
+            } else {
+                // Ligar a câmera
+                statusElement.textContent = "Solicitando acesso à câmera...";
+                
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(function(stream) {
+                            videoElement.srcObject = stream;
+                            videoContainer.style.display = 'block';
+                            button.textContent = 'Parar Câmera';
+                            statusElement.textContent = "Câmera iniciada com sucesso!";
+                        })
+                        .catch(function(error) {
+                            console.error("Erro ao acessar a câmera: ", error);
+                            statusElement.textContent = "Erro ao acessar a câmera. Verifique as permissões.";
+                        });
+                } else {
+                    statusElement.textContent = "Seu navegador não suporta acesso à câmera.";
+                }
+            }
+        });
     </script>
-
-  </body>
+</body>
 </html>
