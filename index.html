@@ -2,440 +2,417 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <!-- Crucial viewport settings for mobile, prevents zooming -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>AR Pin ao Norte</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realidade Aumentada</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
+            overflow: hidden;
             background-color: #000;
-            color: #fff;
-            /* Prevent pull-to-refresh and scrolling */
-            overscroll-behavior: none;
-            overflow: hidden; /* Hide scrollbars */
-            height: 100vh; /* Full viewport height */
-            display: flex; /* Use flexbox for layout */
-            flex-direction: column; /* Stack elements vertically */
         }
-        .container {
-            position: relative; /* Needed for absolute positioning of children */
+        
+        #video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            flex-grow: 1; /* Takes up all available space */
-            overflow: hidden; /* Hide parts of video/pin that overflow */
-            display: flex; /* Center video (helps if aspect ratio mismatches) */
+            height: 100%;
+            z-index: 1;
+        }
+        
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        #ar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        #pin {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background-color: red;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            display: none;
+        }
+        
+        #pin:after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            margin: 10px 0 0 10px;
+            background-color: white;
+            position: absolute;
+            border-radius: 50%;
+        }
+        
+        #info-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            z-index: 3;
+            font-size: 14px;
+        }
+        
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .compass {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid white;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 3;
+            display: flex;
             justify-content: center;
             align-items: center;
         }
-        #video {
-            /* Ensure video covers the screen, potentially cropping */
-            min-width: 100%;
-            min-height: 100%;
-            width: auto;
-            height: auto;
-            object-fit: cover;
-            /* Flip video horizontally if using front camera accidentally */
-            /* transform: scaleX(-1); */ /* Uncomment if needed */
+        
+        .compass-arrow {
+            width: 2px;
+            height: 25px;
+            background-color: red;
+            transform-origin: bottom center;
         }
-        #north-pin {
-            position: absolute;
-            /* Start centered vertically, adjust as needed */
-            top: 45%;
-            /* Start centered horizontally, JS will move it */
-            left: 50%;
-            transform: translate(-50%, -50%); /* Center the pin element itself */
-            width: 30px; /* Increased size */
-            height: 45px;/* Increased size */
-            background-color: rgba(255, 0, 0, 0.8); /* Semi-transparent red */
-            border-radius: 50% 50% 50% 0 / 60% 60% 40% 0; /* More pronounced teardrop */
-            border: 2px solid white;
-            display: none; /* Hidden initially */
-            z-index: 10;
-            /* Basic arrow shape using clip-path */
-            /* clip-path: polygon(50% 0%, 0% 100%, 100% 100%); */
-            /* Rotate the teardrop to point up */
-            transform-origin: 50% 100%; /* Rotate around the bottom center */
-            transform: translate(-50%, -50%) rotate(180deg); /* Initial centering and point up */
-            transition: left 0.1s linear; /* Smooth horizontal movement */
-        }
-
-        #status-container {
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 8px;
-            font-size: 0.8em;
-            font-family: monospace;
-            position: fixed; /* Keep status visible */
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            box-sizing: border-box;
-            z-index: 20;
-            display: flex; /* Arrange status items inline */
-            justify-content: space-around; /* Space them out */
-            flex-wrap: wrap; /* Allow wrapping on small screens */
-        }
-         #status-container > div {
-            margin: 2px 5px; /* Spacing between items */
-         }
-
-        #start-button {
+        
+        #reset-button {
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 15px 30px;
-            font-size: 18px;
-            background-color: #4CAF50;
-            color: white;
+            top: 20px;
+            left: 20px;
+            z-index: 3;
+            background-color: rgba(255, 255, 255, 0.7);
+            color: black;
             border: none;
+            padding: 8px 12px;
             border-radius: 5px;
-            cursor: pointer;
-            z-index: 30;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            font-size: 14px;
         }
-         #start-button:disabled {
-            background-color: #aaa;
-            cursor: not-allowed;
-         }
-
-        .error { color: #ff6666; }
-        .success { color: #66ff66; }
-        .pending { color: #ffcc00; }
-
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <video id="video" autoplay playsinline muted></video> <!-- muted is often required for autoplay -->
-        <div id="north-pin"></div>
+    <div id="video-container">
+        <video id="video" autoplay playsinline></video>
     </div>
-
-    <div id="status-container">
-        <div>GPS: <span id="gps-status" class="pending">Off</span> <span id="coordinates"></span></div>
-        <div>Cam: <span id="cam-status" class="pending">Off</span></div>
-        <div>Compass: <span id="compass-status" class="pending">Off</span> <span id="heading">---</span>°</div>
-        <div>Pin: <span id="pin-status">Hidden</span></div>
+    
+    <div id="ar-overlay">
+        <div id="pin"></div>
     </div>
-
-    <button id="start-button">Iniciar Experiência AR</button>
+    
+    <div class="compass">
+        <div class="compass-arrow" id="compass-arrow"></div>
+    </div>
+    
+    <button id="reset-button">Reiniciar</button>
+    
+    <div id="info-panel">
+        <div class="data-row">
+            <span>Latitude:</span>
+            <span id="latitude">Carregando...</span>
+        </div>
+        <div class="data-row">
+            <span>Longitude:</span>
+            <span id="longitude">Carregando...</span>
+        </div>
+        <div class="data-row">
+            <span>Precisão:</span>
+            <span id="accuracy">Carregando...</span>
+        </div>
+        <div class="data-row">
+            <span>Direção:</span>
+            <span id="heading">Carregando...</span>
+        </div>
+        <div class="data-row">
+            <span>Status:</span>
+            <span id="status">Iniciando sensores...</span>
+        </div>
+    </div>
 
     <script>
-        const videoElement = document.getElementById('video');
-        const pinElement = document.getElementById('north-pin');
-        const startButton = document.getElementById('start-button');
-
-        // Status elements
-        const gpsStatusElement = document.getElementById('gps-status');
-        const coordinatesElement = document.getElementById('coordinates');
-        const camStatusElement = document.getElementById('cam-status');
-        const compassStatusElement = document.getElementById('compass-status');
+        // Elementos DOM
+        const video = document.getElementById('video');
+        const pin = document.getElementById('pin');
+        const latitudeElement = document.getElementById('latitude');
+        const longitudeElement = document.getElementById('longitude');
+        const accuracyElement = document.getElementById('accuracy');
         const headingElement = document.getElementById('heading');
-        const pinStatusElement = document.getElementById('pin-status');
-
-        // State variables
+        const statusElement = document.getElementById('status');
+        const compassArrow = document.getElementById('compass-arrow');
+        const resetButton = document.getElementById('reset-button');
+        
+        // Variáveis globais
+        let currentPosition = null;
         let currentHeading = null;
-        let currentLat = null;
-        let currentLon = null;
-        let cameraStream = null;
-        let geoWatchId = null;
-        let orientationHandler = null;
-        let animationFrameId = null;
-        let sensorsReady = { gps: false, camera: false, compass: false };
-
-        // --- Configuration ---
-        const CAMERA_HORIZONTAL_FOV = 65; // Adjust this based on testing! Common range 60-90.
-        const TARGET_BEARING = 0; // North
-
-        // --- Functions ---
-
-        function updateStatus(sensor, status, message = '') {
-            sensorsReady[sensor] = (status === 'success');
-            const element = document.getElementById(`${sensor}-status`);
-            if (element) {
-                element.textContent = message || status.charAt(0).toUpperCase() + status.slice(1);
-                element.className = status; // 'success', 'error', 'pending'
-            }
-             checkAllReady();
-        }
-
-        function checkAllReady() {
-             if (sensorsReady.gps && sensorsReady.camera && sensorsReady.compass) {
-                 pinElement.style.display = 'block'; // Show the pin
-                 pinStatusElement.textContent = "Active";
-                 if (!animationFrameId) { // Start animation loop only once
+        let watchPositionId = null;
+        let deviceOrientationHandler = null;
+        
+        // Iniciar aplicação
+        window.addEventListener('load', initApp);
+        resetButton.addEventListener('click', initApp);
+        
+        // Função principal para iniciar o aplicativo
+        function initApp() {
+            statusElement.textContent = "Iniciando câmera e sensores...";
+            
+            // Iniciar câmera traseira
+            startCamera()
+                .then(() => {
+                    statusElement.textContent = "Câmera iniciada. Obtendo localização...";
+                    return startGeolocation();
+                })
+                .then(() => {
+                    statusElement.textContent = "Localização obtida. Iniciando bússola...";
+                    return startCompass();
+                })
+                .then(() => {
+                    statusElement.textContent = "Aplicação pronta!";
                     updatePinPosition();
-                 }
-             } else {
-                 // Keep pin hidden if not all sensors are ready
-                 pinElement.style.display = 'none';
-                 pinStatusElement.textContent = "Waiting for sensors...";
-             }
+                })
+                .catch(error => {
+                    statusElement.textContent = "Erro: " + error.message;
+                    console.error("Erro na inicialização:", error);
+                });
         }
-
-
-        function startGps() {
-            updateStatus('gps', 'pending', 'Requesting...');
-            if (!navigator.geolocation) {
-                updateStatus('gps', 'error', 'Not Supported');
-                return;
-            }
-
-            geoWatchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    currentLat = position.coords.latitude;
-                    currentLon = position.coords.longitude;
-                    coordinatesElement.textContent = `${currentLat.toFixed(5)}, ${currentLon.toFixed(5)}`;
-                    if (!sensorsReady.gps) { // Update status only on first success
-                         updateStatus('gps', 'success', 'Active');
-                    }
-                },
-                (error) => {
-                    console.error("GPS Error:", error);
-                    let message = 'Error';
-                    switch(error.code) {
-                        case error.PERMISSION_DENIED: message = "Denied"; break;
-                        case error.POSITION_UNAVAILABLE: message = "Unavailable"; break;
-                        case error.TIMEOUT: message = "Timeout"; break;
-                    }
-                    updateStatus('gps', 'error', message);
-                    coordinatesElement.textContent = '---';
-                    // Stop watching if permission denied or permanently unavailable?
-                     if (error.code === error.PERMISSION_DENIED || error.code === error.POSITION_UNAVAILABLE) {
-                        stopGps(); // Stop trying if it's futile
-                     }
-                },
-                {
-                    enableHighAccuracy: true, // Request more accuracy
-                    maximumAge: 10000,      // Use cached position up to 10s old
-                    timeout: 20000          // Give up after 20s
-                }
-            );
-        }
-
-        function stopGps() {
-            if (geoWatchId) {
-                navigator.geolocation.clearWatch(geoWatchId);
-                geoWatchId = null;
-            }
-            updateStatus('gps', 'pending', 'Off');
-            coordinatesElement.textContent = '';
-             sensorsReady.gps = false;
-             checkAllReady(); // Re-check if pin should be hidden
-        }
-
+        
+        // Iniciar a câmera traseira
         function startCamera() {
-            updateStatus('camera', 'pending', 'Requesting...');
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                 updateStatus('camera', 'error', 'Not Supported');
-                return;
-            }
-
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment', // Prioritize rear camera
-                     // Optional: Add resolution constraints if needed
-                     // width: { ideal: 1280 },
-                     // height: { ideal: 720 }
+            return new Promise((resolve, reject) => {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    reject(new Error("Seu navegador não suporta acesso à câmera"));
+                    return;
                 }
-            })
-            .then(stream => {
-                cameraStream = stream;
-                videoElement.srcObject = stream;
-                videoElement.play(); // Ensure it plays
-                 updateStatus('camera', 'success', 'Active');
-            })
-            .catch(error => {
-                console.error("Camera Error:", error);
-                let message = 'Error';
-                 if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                    message = 'Denied';
-                 } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                    message = 'No Back Cam';
-                    // Fallback to any camera? Could try { video: true } here.
-                 } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
-                     message = 'Hardware Error';
-                 }
-                 updateStatus('camera', 'error', message);
-                 // Attempt cleanup
-                 stopCamera();
+                
+                // Configuração para garantir o uso da câmera traseira
+                const constraints = {
+                    video: {
+                        facingMode: { exact: "environment" }, // Forçar câmera traseira
+                        width: { ideal: window.innerWidth },
+                        height: { ideal: window.innerHeight }
+                    }
+                };
+                
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(stream => {
+                        video.srcObject = stream;
+                        // Aguardar que o vídeo esteja pronto
+                        video.onloadedmetadata = () => {
+                            resolve();
+                        };
+                    })
+                    .catch(err => {
+                        // Fallback para qualquer câmera disponível
+                        navigator.mediaDevices.getUserMedia({ video: true })
+                            .then(stream => {
+                                video.srcObject = stream;
+                                video.onloadedmetadata = () => {
+                                    statusElement.textContent += " (Usando câmera disponível)";
+                                    resolve();
+                                };
+                            })
+                            .catch(err => {
+                                reject(new Error("Não foi possível acessar a câmera: " + err.message));
+                            });
+                    });
             });
         }
-
-        function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                cameraStream = null;
-                 videoElement.srcObject = null;
-            }
-             updateStatus('camera', 'pending', 'Off');
-              sensorsReady.camera = false;
-              checkAllReady(); // Re-check if pin should be hidden
+        
+        // Iniciar e monitorar a geolocalização
+        function startGeolocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error("Geolocalização não é suportada neste navegador"));
+                    return;
+                }
+                
+                // Obter posição inicial
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        updatePositionInfo(position);
+                        
+                        // Iniciar monitoramento contínuo
+                        watchPositionId = navigator.geolocation.watchPosition(
+                            updatePositionInfo,
+                            error => {
+                                console.error("Erro na geolocalização:", error);
+                                statusElement.textContent = "Erro na geolocalização: " + getGeolocationErrorMessage(error);
+                            },
+                            {
+                                enableHighAccuracy: true,
+                                maximumAge: 0,
+                                timeout: 5000
+                            }
+                        );
+                        
+                        resolve();
+                    },
+                    error => {
+                        reject(new Error("Erro ao obter localização: " + getGeolocationErrorMessage(error)));
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 0,
+                        timeout: 10000
+                    }
+                );
+            });
         }
-
-        function startOrientationSensor() {
-            updateStatus('compass', 'pending', 'Requesting...');
-
-            orientationHandler = (event) => {
-                 let heading = null;
-                 // iOS/Safari uses webkitCompassHeading
-                 if (event.webkitCompassHeading !== undefined) {
-                     heading = event.webkitCompassHeading;
-                 }
-                 // Standard alpha, but check if it's absolute
-                 // event.absolute should be true for magnetometer-based orientation
-                 else if (event.alpha !== null) {
-                     // The alpha value is 0-360, where 0 is North.
-                     // Some devices might need calibration or give relative values if absolute=false
-                     // We might need to invert it depending on device: (360 - event.alpha) % 360
-                     heading = event.alpha;
-                     // Optional: Check event.absolute, though support varies
-                     // if (!event.absolute) { console.warn("Compass data might be relative, not absolute North."); }
-                 }
-
-                 if (heading !== null) {
-                     currentHeading = heading;
-                     headingElement.textContent = Math.round(currentHeading);
-                     if (!sensorsReady.compass) { // Update status only on first success
-                         updateStatus('compass', 'success', 'Active');
-                     }
-                 } else {
-                     // No heading data available from this event
-                     if (!sensorsReady.compass) {
-                        updateStatus('compass', 'error', 'No Data');
-                     }
-                 }
-            };
-
-            // iOS requires user interaction AND permission request for DeviceOrientationEvent
-            // The permission must be requested FIRST.
-             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                 // iOS 13+ handling
-                 DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            window.addEventListener('deviceorientation', orientationHandler, true);
-                             updateStatus('compass', 'success', 'Active'); // Assume success for now, handler will update
-                        } else {
-                             updateStatus('compass', 'error', 'Denied (iOS)');
-                        }
-                    })
-                    .catch(error => {
-                        console.error("iOS Orientation Permission Error:", error);
-                        updateStatus('compass', 'error', 'Permission Error');
-                    });
-             } else {
-                 // Non-iOS or older iOS
-                 // Check if 'deviceorientationabsolute' is available (preferred)
-                 if ('ondeviceorientationabsolute' in window) {
-                     window.addEventListener('deviceorientationabsolute', orientationHandler, true);
-                      console.log("Using deviceorientationabsolute");
-                 } else if ('ondeviceorientation' in window) {
-                     window.addEventListener('deviceorientation', orientationHandler, true);
-                      console.log("Using deviceorientation");
-                 } else {
-                      updateStatus('compass', 'error', 'Not Supported');
-                 }
-                 // We don't know for sure if it will work yet, handler function updates status on first data.
-                 updateStatus('compass', 'pending', 'Listening...'); // Initial status until first event
-             }
+        
+        // Iniciar bússola (sensor de orientação)
+        function startCompass() {
+            return new Promise((resolve, reject) => {
+                if (window.DeviceOrientationEvent) {
+                    // Verificar se precisa de permissão (iOS 13+)
+                    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        DeviceOrientationEvent.requestPermission()
+                            .then(permissionState => {
+                                if (permissionState === 'granted') {
+                                    registerOrientationListener();
+                                    resolve();
+                                } else {
+                                    reject(new Error("Permissão de orientação negada"));
+                                }
+                            })
+                            .catch(err => {
+                                reject(new Error("Erro ao solicitar permissão de orientação: " + err.message));
+                            });
+                    } else {
+                        // Para dispositivos que não precisam de permissão
+                        registerOrientationListener();
+                        resolve();
+                    }
+                } else {
+                    reject(new Error("Seu dispositivo não suporta orientação/bússola"));
+                }
+            });
         }
-
-        function stopOrientationSensor() {
-            if (orientationHandler) {
-                 // Remove the specific listener used
-                 window.removeEventListener('deviceorientationabsolute', orientationHandler, true);
-                 window.removeEventListener('deviceorientation', orientationHandler, true);
-                 orientationHandler = null;
-            }
-            updateStatus('compass', 'pending', 'Off');
-            headingElement.textContent = '---';
-            sensorsReady.compass = false;
-            checkAllReady(); // Re-check if pin should be hidden
-        }
-
-
-        function updatePinPosition() {
-             if (currentHeading === null || !sensorsReady.compass || !sensorsReady.camera) {
-                 // Don't update if compass isn't ready or camera failed
-                 animationFrameId = requestAnimationFrame(updatePinPosition); // Keep trying
-                 return;
-             }
-
-             // Calculate difference between current heading and target (North = 0)
-             // We want how many degrees North is away from the center of our view (currentHeading)
-             let angleDifference = TARGET_BEARING - currentHeading;
-
-             // Normalize the angle difference to be between -180 and 180
-             while (angleDifference <= -180) angleDifference += 360;
-             while (angleDifference > 180) angleDifference -= 360;
-
-             // Calculate the horizontal FOV half-angle
-             const halfFov = CAMERA_HORIZONTAL_FOV / 2.0;
-
-            // Check if the target is within the camera's horizontal field of view
-            if (Math.abs(angleDifference) <= halfFov) {
-                // Calculate the position offset as a percentage of the screen width
-                // A difference of 0 means center (50%)
-                // A difference of +halfFov means right edge (100%)
-                // A difference of -halfFov means left edge (0%)
-                const offsetPercent = (angleDifference / halfFov) * 50; // Scale to +/- 50%
-                const pinLeftPercent = 50 + offsetPercent;
-
-                pinElement.style.left = `${pinLeftPercent}%`;
-                pinElement.style.display = 'block'; // Ensure visible if within FOV
-                pinStatusElement.textContent = `Visible (${angleDifference.toFixed(1)}°)`;
-            } else {
-                // Target is outside the FOV, hide the pin
-                 pinElement.style.display = 'none';
-                 pinStatusElement.textContent = `Outside FOV (${angleDifference.toFixed(1)}°)`;
-
-                 // OPTIONAL: Clamp pin to edge instead of hiding
-                 /*
-                 if (angleDifference > 0) { // Target is to the right
-                     pinElement.style.left = '100%';
-                     pinElement.style.transform = 'translate(-100%, -50%) rotate(180deg)'; // Adjust transform for edge pinning
-                 } else { // Target is to the left
-                     pinElement.style.left = '0%';
-                      pinElement.style.transform = 'translate(0%, -50%) rotate(180deg)'; // Adjust transform
-                 }
-                 pinElement.style.display = 'block';
-                 pinStatusElement.textContent = `Outside FOV (${angleDifference.toFixed(1)}°)`;
-                 */
-            }
-
-             // Request the next frame
-             animationFrameId = requestAnimationFrame(updatePinPosition);
-        }
-
-        function stopExperience() {
-            console.log("Stopping experience...");
-             stopGps();
-             stopCamera();
-             stopOrientationSensor();
-             if (animationFrameId) {
-                 cancelAnimationFrame(animationFrameId);
-                 animationFrameId = null;
-             }
-             pinElement.style.display = 'none';
-             pinStatusElement.textContent = "Hidden";
-             startButton.style.display = 'block'; // Show start button again
-             startButton.disabled = false;
-        }
-
-        // --- Event Listeners ---
-        startButton.addEventListener('click', () => {
-            console.log("Start button clicked");
-            startButton.disabled = true;
-            startButton.textContent = "Iniciando...";
-
-            // Important: Request orientation permission FIRST on iOS if needed
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                 updateStatus('compass', 'pending', 'Requesting Perm...');
-                 DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            updateStatus('compass', 'success', 'Perm OK');
-                             // Now start everything else
+        
+        // Registrar listener de orientação do dispositivo
+        function registerOrientationListener() {
+            deviceOrientationHandler = event => {
+                // Alpha: Rotação em torno do eixo z (0-360)
+                // Em alguns dispositivos, 0 é norte, em outros é necessário calibrar
+                if (event.alpha !== null) {
+                    currentHeading = event.alpha;
+                    compassArrow.style.transform = `rotate(${360 - currentHeading}deg)`;
+                    headingElement.textContent = Math.round(currentHeading) + "°";
                     
+                    // Atualizar posição do pin baseado na nova direção
+                    updatePinPosition();
+                }
+            };
+            
+            window.addEventListener('deviceorientation', deviceOrientationHandler);
+        }
+        
+        // Atualizar informações de posição
+        function updatePositionInfo(position) {
+            currentPosition = position.coords;
+            
+            latitudeElement.textContent = currentPosition.latitude.toFixed(6) + "°";
+            longitudeElement.textContent = currentPosition.longitude.toFixed(6) + "°";
+            accuracyElement.textContent = Math.round(currentPosition.accuracy) + " m";
+            
+            // Atualizar posição do pin
+            updatePinPosition();
+        }
+        
+        // Atualizar posição do pin (3 metros ao norte da posição atual)
+        function updatePinPosition() {
+            if (!currentPosition || currentHeading === null) return;
+            
+            // Exibir o pin
+            pin.style.display = 'block';
+            
+            // Simular posição 3 metros à frente com base na orientação atual
+            // Ajuste baseado na direção da bússola e no campo de visão da câmera
+            const fieldOfView = 60; // Valor aproximado para a maioria das câmeras de smartphones
+            const distance = 3; // 3 metros à frente
+            
+            // Calcular posição na tela com base na orientação do dispositivo
+            // Esta é uma aproximação simples, AR real exigiria uma matemática mais complexa
+            const heading = currentHeading;
+            
+            // Calcular offset horizontal baseado na diferença entre o heading atual e o norte (0/360 graus)
+            // Quanto mais próxima a direção atual estiver do norte, mais centralizado o pin deve estar
+            const northDelta = Math.min(Math.abs(heading), Math.abs(360 - heading));
+            const horizontalPercent = 0.5 - (northDelta / 180) * 0.5;
+            
+            // Se estamos olhando para o norte (com uma margem de erro), mostrar o pin
+            // Caso contrário, esconder o pin ou mostrar fora da tela
+            if (northDelta < 30) { // 30 graus de tolerância
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+                
+                // Quanto mais perto olhamos do norte, mais baixo na tela o pin aparece
+                // (simulando distância)
+                const verticalPos = screenHeight * 0.35 - (northDelta / 30) * screenHeight * 0.2;
+                
+                // Posicionar o pin na tela
+                pin.style.left = `${screenWidth * horizontalPercent}px`;
+                pin.style.top = `${verticalPos}px`;
+                pin.style.transform = 'rotate(-45deg) scale(' + (1 - northDelta/30 * 0.5) + ')';
+                pin.style.opacity = 1 - northDelta/30 * 0.7;
+            } else {
+                // Esconder o pin se não estiver olhando para o norte
+                pin.style.opacity = 0;
+            }
+        }
+        
+        // Obter mensagem de erro de geolocalização
+        function getGeolocationErrorMessage(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    return "Acesso à localização negado pelo usuário";
+                case error.POSITION_UNAVAILABLE:
+                    return "Informação de localização indisponível";
+                case error.TIMEOUT:
+                    return "Tempo limite para obter localização excedido";
+                case error.UNKNOWN_ERROR:
+                default:
+                    return "Erro desconhecido";
+            }
+        }
+        
+        // Limpar recursos ao sair/recarregar a página
+        window.addEventListener('beforeunload', () => {
+            // Parar monitoramento de geolocalização
+            if (watchPositionId !== null) {
+                navigator.geolocation.clearWatch(watchPositionId);
+            }
+            
+            // Remover listener de orientação
+            if (deviceOrientationHandler) {
+                window.removeEventListener('deviceorientation', deviceOrientationHandler);
+            }
+            
+            // Parar câmera
+            if (video.srcObject) {
+                const tracks = video.srcObject.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+        });
+    </script>
+</body>
+</html>
